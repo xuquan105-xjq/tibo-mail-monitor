@@ -62,7 +62,6 @@ jobs:
             git switch --detach FETCH_HEAD
           elif [ "$status" -eq 2 ]; then
             git switch --orphan monitor-state
-            git rm -rf .
           else
             exit "$status"
           fi
