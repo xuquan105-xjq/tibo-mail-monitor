@@ -55,14 +55,14 @@ def fetch_posts(since=None):
 
 
 def send_mail(posts, test=False):
-    sender = os.environ['GMAIL_ADDRESS']
-    password = os.environ['GMAIL_APP_PASSWORD'].replace(' ', '')
+    sender = os.environ['QQ_EMAIL']
+    password = os.environ['QQ_AUTH_CODE'].replace(' ', '')
     recipient = os.environ.get('EMAIL_TO') or sender
     message = EmailMessage()
     message['From'], message['To'] = sender, recipient
     message['Subject'] = 'Tibo monitor test' if test else f'Tibo: {len(posts)} new X posts'
     message.set_content('Test notification: email delivery works.' if test else '\n\n'.join(post['text'] + '\n' + post['url'] for post in posts))
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context(), timeout=30) as smtp:
+    with smtplib.SMTP_SSL('smtp.qq.com', 465, context=ssl.create_default_context(), timeout=30) as smtp:
         smtp.login(sender, password)
         smtp.send_message(message)
 
