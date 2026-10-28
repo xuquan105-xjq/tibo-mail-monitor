@@ -1,0 +1,74 @@
+name: Tibo email monitor
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+    inputs:
+      test_email:
+        description: Send a test email instead of checking X
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: tibo-monitor
+  cancel-in-progress: false
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Restore durable state
+        shell: bash
+        run: |
+          mkdir -p runtime
+          status=0
+          git ls-remote --exit-code --heads origin monitor-state >/dev/null || status=$?
+          if [ "$status" -eq 0 ]; then
+            git fetch origin monitor-state
+            git show FETCH_HEAD:state.json > runtime/state.json
+          elif [ "$status" -ne 2 ]; then
+            exit "$status"
+          fi
+      - name: Check posts or test email
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          TEST_EMAIL: ${{ inputs.test_email }}
+        shell: bash
+        run: |
+          if [ "$TEST_EMAIL" = "true" ]; then
+            python monitor.py --test-email
+          else
+            python monitor.py
+          fi
+      - name: Persist state even if sending failed
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [ ! -s runtime/state.json ]; then exit 0; fi
+          cp runtime/state.json "$RUNNER_TEMP/state.json"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          status=0
+          git ls-remote --exit-code --heads origin monitor-state >/dev/null || status=$?
+          if [ "$status" -eq 0 ]; then
+            git fetch origin monitor-state
+            git switch --detach FETCH_HEAD
+          elif [ "$status" -eq 2 ]; then
+            git switch --orphan monitor-state
+            git rm -rf .
+          else
+            exit "$status"
+          fi
+          cp "$RUNNER_TEMP/state.json" state.json
+          git add state.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update monitor state'
+            git push origin HEAD:refs/heads/monitor-state
+          fi
