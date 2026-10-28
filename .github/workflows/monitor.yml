@@ -36,8 +36,8 @@ jobs:
           fi
       - name: Check posts or test email
         env:
-          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          QQ_EMAIL: ${{ secrets.QQ_EMAIL }}
+          QQ_AUTH_CODE: ${{ secrets.QQ_AUTH_CODE }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           TEST_EMAIL: ${{ inputs.test_email }}
         shell: bash
